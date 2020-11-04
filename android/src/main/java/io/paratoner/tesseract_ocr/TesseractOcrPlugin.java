@@ -8,6 +8,7 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
+import android.os.Handler;
 
 /** TesseractOcrPlugin */
 public class TesseractOcrPlugin implements MethodCallHandler {
@@ -22,8 +23,7 @@ public class TesseractOcrPlugin implements MethodCallHandler {
 
 
   @Override
-  public void onMethodCall(MethodCall call, Result result) {
-
+  public void onMethodCall(MethodCall call, final Result result) {
     if (call.method.equals("extractText")) {
       final String tessDataPath = call.argument("tessData");
       final String imagePath = call.argument("imagePath");
@@ -36,21 +36,25 @@ public class TesseractOcrPlugin implements MethodCallHandler {
       baseApi.init(tessDataPath, DEFAULT_LANGUAGE);
       final File tempFile = new File(imagePath);
       baseApi.setPageSegMode(DEFAULT_PAGE_SEG_MODE);
-
+      final Handler handler = new Handler();
       Thread t = new Thread(new Runnable() {
         public void run() {
           baseApi.setImage(tempFile);
           recognizedText[0] = baseApi.getUTF8Text();
           baseApi.end();
+          handler.post(new Runnable() {
+            @Override
+            public void run() {
+              result.success(recognizedText[0]);
+            }
+          });
         }
       });
       t.start();
-      try { t.join(); } catch (InterruptedException e) { e.printStackTrace(); }
-      result.success(recognizedText[0]);
+      // try { t.join(); } catch (InterruptedException e) { e.printStackTrace(); }
+      // result.success(recognizedText[0]);
     } else {
       result.notImplemented();
     }
   }
-
-
 }
